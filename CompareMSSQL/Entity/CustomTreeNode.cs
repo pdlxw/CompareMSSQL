@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TreeNode = System.Windows.Forms.TreeNode;
 using Microsoft.SqlServer.Management.Smo;
+using CompareMSSQL.Enum;
 
 namespace CompareMSSQL.Entity
 {
@@ -23,15 +24,13 @@ namespace CompareMSSQL.Entity
 
         public bool CanMenu { get; set; }
 
-        public bool IsTable { get; set; }
+        public DifferencesType Differences { get; set; }
 
-        public bool IsColumn { get; set; }
-
-        public bool IsColType { get; set; }
-
-        public DBTableView TableView { get; set; }
+        public bool IsSourceDB { get; set; }
 
         public Table Table { get; set; }
+
+        public View View { get; set; }
 
         public Column Column { get; set; }
 

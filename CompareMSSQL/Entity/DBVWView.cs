@@ -3,22 +3,21 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.SqlServer.Management.Smo;
 using CompareMSSQL.Enum;
+using Microsoft.SqlServer.Management.Smo;
 
 namespace CompareMSSQL.Entity
 {
-    class DBTableView : CompareSourceView
+    class DBVWView : CompareSourceView
     {
-
-        public DBTableView()
+        public DBVWView()
         {
 
         }
 
-        public DBTableView(Table tb, bool isSource, DifferencesType dt, string connectStr = "", string compareConnectStr = "")
+        public DBVWView(View view, bool isSource, DifferencesType dt, string connectStr = "", string compareConnectStr = "")
         {
-            DBTable = tb;
+            DBView = view;
             IsSourceDB = isSource;
             Differences = dt;
             ConnectString = connectStr;
@@ -26,9 +25,8 @@ namespace CompareMSSQL.Entity
         }
 
         /// <summary>
-        /// 表
+        /// 视图
         /// </summary>
-        public Table DBTable { get; set; }
-
+        public View DBView { get; set; }
     }
 }

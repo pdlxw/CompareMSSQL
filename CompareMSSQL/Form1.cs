@@ -55,14 +55,14 @@ namespace CompareMSSQL
                     compareTable.Show();
                     break;
                 case "视图":
-                    var compareTable2 = new CompareTable(tb_sourceDB.Text, tb_targetDB.Text);
+                    var compareView = new CompareView(tb_sourceDB.Text, tb_targetDB.Text);
                     MenuSplitContainer.Panel2.Controls.Clear();
-                    compareTable2.Dock = DockStyle.Fill;
-                    compareTable2.TopLevel = false;
-                    compareTable2.WindowState = FormWindowState.Maximized;
-                    compareTable2.FormBorderStyle = FormBorderStyle.None;
-                    compareTable2.Parent = MenuSplitContainer.Panel2;
-                    compareTable2.Show();
+                    compareView.Dock = DockStyle.Fill;
+                    compareView.TopLevel = false;
+                    compareView.WindowState = FormWindowState.Maximized;
+                    compareView.FormBorderStyle = FormBorderStyle.None;
+                    compareView.Parent = MenuSplitContainer.Panel2;
+                    compareView.Show();
                     break;
                 case "存储过程":
                     break;

@@ -13,19 +13,13 @@ using Microsoft.SqlServer.Management.Sdk.Sfc;
 using Microsoft.SqlServer.Management.Common;
 using CompareMSSQL.Entity;
 using CompareMSSQL.Enum;
+using System.Threading;
 
 namespace CompareMSSQL.SubForm
 {
-    public partial class CompareTable : Form
+    public partial class CompareTable : CommonWin
     {
-        /// <summary>
-        /// 源数据库连接字
-        /// </summary>
-        private string sourceDB;
-        /// <summary>
-        /// 目标数据库连接字
-        /// </summary>
-        private string targetDB;
+        
         /// <summary>
         /// 所有表
         /// </summary>
@@ -41,17 +35,14 @@ namespace CompareMSSQL.SubForm
         //    InitializeComponent();
         //}
 
-        public CompareTable(string sourceDB, string targetDB)
+        public CompareTable(string sourceDB, string targetDB):base()
         {
             this.sourceDB = sourceDB;
-            this.targetDB = targetDB;  
-            
+            this.targetDB = targetDB;
             InitializeComponent();
-
             setTableView();
-
-            setTreeView(source_table_tv, true);
-            setTreeView(target_table_tv, false);
+            setTreeView(tvwSource, true);
+            setTreeView(tvwTarget, false);
         }
 
 
@@ -59,11 +50,17 @@ namespace CompareMSSQL.SubForm
         {
             try
             {
+                Console.WriteLine(string.Format("1:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
                 var sourceDatabase = getDB(sourceDB) ?? new Database();
                 var targetDatabase = getDB(targetDB) ?? new Database();
 
                 foreach (Table sdb in sourceDatabase.Tables)
                 {
+                    if (sdb.IsSystemObject)
+                    {
+                        continue;
+                    }
+
                     if (!targetDatabase.Tables.Contains(sdb.Name))
                     {
                         allTables.Add(new DBTableView(sdb, true, DifferencesType.unique));
@@ -87,7 +84,7 @@ namespace CompareMSSQL.SubForm
 
                 foreach (Table ttb in targetDatabase.Tables)
                 {
-                    if (!sourceDatabase.Tables.Contains(ttb.Name))
+                    if (!ttb.IsSystemObject && !sourceDatabase.Tables.Contains(ttb.Name))
                     {
                         allTables.Add(new DBTableView(ttb, false, DifferencesType.unique));
 
@@ -98,71 +95,21 @@ namespace CompareMSSQL.SubForm
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
-        }
-
-        [Obsolete]
-        private void setTableView_obsolete()
-        {
-            try
-            {
-                List<Table> sourceTable = getDBTable(sourceDB, false);
-                List<Table> targetTable = getDBTable(targetDB, false);
-                //var tableView = new DBTableView();
-                //目标数据库独有的
-                var tUnique = targetTable.Where(t => !sourceTable.Select(s => s.Name).ToList().Contains(t.Name));
-                foreach (var tu in tUnique)
-                {
-                    allTables.Add(new DBTableView(tu, false, DifferencesType.unique, targetDB, sourceDB));
-
-                    allTables.Add(new DBTableView(tu, true, DifferencesType.lack));
-                }
-                ///遍历源数据库，如匹配则比较表结构
-                foreach (Table tb in sourceTable)
-                {
-                    Table matchTable = targetTable.Where(t => t.Name == tb.Name).FirstOrDefault();
-                    if (matchTable == null)
-                    {
-                        allTables.Add(new DBTableView(tb, true, DifferencesType.unique));
-
-                        allTables.Add(new DBTableView(tb, false, DifferencesType.lack));
-                    }
-                    else if (IsEqualTowTable(tb, matchTable))
-                    {
-                        allTables.Add(new DBTableView(tb, true, DifferencesType.common));
-
-                        allTables.Add(new DBTableView(matchTable, false, DifferencesType.common));
-                    }
-                    else
-                    {
-                        allTables.Add(new DBTableView(tb, true, DifferencesType.differences));
-
-                        allTables.Add(new DBTableView(matchTable, false, DifferencesType.differences));
-                    }
-                    
-                }
-            }
-            catch (Exception ex)
-            {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
-            }
+            Console.WriteLine(string.Format("2:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
         }
 
         private void setTreeView(TreeView tv, bool isSource)
         {
             try
             {
+                Console.WriteLine(string.Format("3:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
                 var tables = allTables.Where(tb => tb.IsSourceDB == isSource).OrderBy(tb => tb.DBTable.Name);
                 CustomTreeNode startNode = new CustomTreeNode();
                 startNode.IsParent = true;
                 startNode.CanMenu = true;
                 startNode.Text = "所有表([黑:同][绿:独有][黄:差异][灰:缺])";
-                startNode.Tag = new TableInfoTag
-                {
-                    IsParent = true,
-                    CanMenu = true
-                };
                 tv.Nodes.Add(startNode);
 
                 var tempNode = new CustomTreeNode();
@@ -190,18 +137,10 @@ namespace CompareMSSQL.SubForm
                     tempNode = new CustomTreeNode();
                     tempNode.IsParent = true;
                     tempNode.CanMenu = true;
-                    tempNode.IsTable = true;
                     tempNode.Table = table.DBTable;
                     tempNode.Text = table.DBTable.Name;
-                    tempNode.Tag = new TableInfoTag
-                    {
-                        IsParent = true,
-                        CanMenu = true,
-                        IsTable = true,
-                        Table = table.DBTable,
-                        TableView = table
-                    };
-                    tempNode.TableView = table;
+                    tempNode.Differences = table.Differences;
+                    tempNode.IsSourceDB = table.IsSourceDB;
                     tempNode.ForeColor = color;
                     startNode.Nodes.Add(tempNode);
 
@@ -209,14 +148,9 @@ namespace CompareMSSQL.SubForm
                     foreach (Column col in table.DBTable.Columns)
                     {
                         colNode = new CustomTreeNode();
-                        colNode.IsColumn = true;
                         colNode.Column = col;
                         colNode.Text = string.Format("{0}({1}{2}{3})", col.Name, col.InPrimaryKey ? "PK," : "", col.DataType.IsStringType ? string.Format("{0}({1}),", col.DataType.Name, col.DataType.MaximumLength) : col.DataType.Name + ",", col.Nullable ? "null" : "not null");
                         colNode.ForeColor = color;
-                        colNode.Tag = new TableInfoTag
-                        {
-                            IsColumn = true
-                        };
                         tempNode.Nodes.Add(colNode);
                     }
                 }
@@ -224,8 +158,9 @@ namespace CompareMSSQL.SubForm
             }
             catch (Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
+            Console.WriteLine(string.Format("4:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
         }
 
         private List<Table> getDBTable(string dbStr, bool includeSys)
@@ -316,37 +251,37 @@ namespace CompareMSSQL.SubForm
         /// <param name="e"></param>
         private void bt_copySql_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrEmpty(tb_Sql.Text))
+            if (!string.IsNullOrEmpty(txtSql.Text))
             {
-                Clipboard.SetDataObject(tb_Sql.Text);
+                Clipboard.SetDataObject(txtSql.Text);
             }         
         }
 
-        private void source_table_tv_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        private void tvwSource_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
             {
-                source_table_tv.SelectedNode = e.Node;
+                tvwSource.SelectedNode = e.Node;
                 //var tag = (TableInfoTag)e.Node.Tag;
-                if (((CustomTreeNode)e.Node).IsTable)
+                if (((CustomTreeNode)e.Node).Table != null)
                 {
                     currentIsSource = true;
-                    e.Node.ContextMenuStrip = cms_table;
+                    e.Node.ContextMenuStrip = cmsTable;
                     //cms_top.Show(source_table_tv, e.X, e.Y);
-                }               
+                }           
             }
         }
 
-        private void target_table_tv_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        private void tvwTarget_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
             {
-                target_table_tv.SelectedNode = e.Node;
+                tvwTarget.SelectedNode = e.Node;
                 //var tag = (TableInfoTag)e.Node.Tag;
-                if (((CustomTreeNode)e.Node).IsTable)
+                if (((CustomTreeNode)e.Node).Table != null)
                 {
                     currentIsSource = false;
-                    e.Node.ContextMenuStrip = cms_table;
+                    e.Node.ContextMenuStrip = cmsTable;
                     //cms_top.Show(source_table_tv, e.X, e.Y);
                 }
             }
@@ -357,33 +292,34 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_currentdiff_Click(object sender, EventArgs e)
+        private void cmsTableCurrentDiff_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 //var tag = (TableInfoTag)source_table_tv.SelectedNode.Tag;
                 CustomTreeNode node;
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    node = (CustomTreeNode)source_table_tv.SelectedNode;
+                    node = (CustomTreeNode)tvwSource.SelectedNode;
                 }
                 else
                 {
-                    node = (CustomTreeNode)target_table_tv.SelectedNode;
+                    node = (CustomTreeNode)tvwTarget.SelectedNode;
                 }
 
-                if (!node.IsTable)
+                if (node.Table == null)
                 {
-                    tb_Sql.Text = "--消息：右键表才能生成脚本。";
+                    txtSql.Text = "--消息：右键表才能生成脚本。";
                     return;
                 }
                 //差异及缺表获取sql
-                switch (node.TableView.Differences)
+                switch (node.Differences)
                 {
                     case DifferencesType.differences:
                         var table = new Table();
-                        if (node.TableView.IsSourceDB)
+                        if (node.IsSourceDB)
                         {
                             table = getTableByName(targetDB, node.Table.Name);
                         }
@@ -391,28 +327,28 @@ namespace CompareMSSQL.SubForm
                         {
                             table = getTableByName(sourceDB, node.Table.Name);
                         }
-                        tb_Sql.Text = getTowTableDiffSql(node.Table, table);
+                        txtSql.Text = getTowTableDiffSql(node.Table, table);
                         break;
                     case DifferencesType.lack:
-                        if (node.TableView.IsSourceDB)
+                        if (node.IsSourceDB)
                         {
-                            tb_Sql.Text = getTableCreateSql(targetDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(targetDB, node.Table.Name);
                         }
                         else
                         {
-                            tb_Sql.Text = getTableCreateSql(sourceDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(sourceDB, node.Table.Name);
                         }
                         break;
                     case DifferencesType.common:
                     case DifferencesType.unique:
                     default:
-                        tb_Sql.Text = "--消息：无差异脚本。";
+                        txtSql.Text = "--消息：无差异脚本。";
                         break;
                 }
             }
             catch (Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
         }
 
@@ -421,60 +357,61 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_currentcreate_Click(object sender, EventArgs e)
+        private void cmsTableCurrentCreate_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 CustomTreeNode node;
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    node = (CustomTreeNode)source_table_tv.SelectedNode;
+                    node = (CustomTreeNode)tvwSource.SelectedNode;
                 }
                 else
                 {
-                    node = (CustomTreeNode)target_table_tv.SelectedNode;
+                    node = (CustomTreeNode)tvwTarget.SelectedNode;
                 }
 
-                if (!node.IsTable)
+                if (node.Table == null)
                 {
-                    tb_Sql.Text = "--消息：右键表才能生成脚本。";
+                    txtSql.Text = "--消息：右键表才能生成脚本。";
                     return;
                 }
                 //缺表从对方数据库获取建表sql，否则自身数据库获取sql
-                switch (node.TableView.Differences)
+                switch (node.Differences)
                 {
                     case DifferencesType.lack:
                         var table = new Table();
-                        if (node.TableView.IsSourceDB)
+                        if (node.IsSourceDB)
                         {
-                            tb_Sql.Text = getTableCreateSql(targetDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(targetDB, node.Table.Name);
                         }
                         else
                         {
-                            tb_Sql.Text = getTableCreateSql(sourceDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(sourceDB, node.Table.Name);
                         }
                         break;
                     case DifferencesType.differences:
                     case DifferencesType.common:
                     case DifferencesType.unique:
-                        if (node.TableView.IsSourceDB)
+                        if (node.IsSourceDB)
                         {
-                            tb_Sql.Text = getTableCreateSql(sourceDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(sourceDB, node.Table.Name);
                         }
                         else
                         {
-                            tb_Sql.Text = getTableCreateSql(targetDB, node.Table.Name);
+                            txtSql.Text = getTableCreateSql(targetDB, node.Table.Name);
                         }
                         break;
                     default:
-                        tb_Sql.Text = "--消息：无脚本。";
+                        txtSql.Text = "--消息：无脚本。";
                         break;
                 }
             }
             catch (Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
         }
 
@@ -483,24 +420,25 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_alldiff_Click(object sender, EventArgs e)
+        private void cmsTableAllDiff_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 TreeNodeCollection nodes = null;
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    nodes = source_table_tv.Nodes;
+                    nodes = tvwSource.Nodes;
                 }
                 else
                 {
-                    nodes = target_table_tv.Nodes;
+                    nodes = tvwTarget.Nodes;
                 }
 
                 if (nodes.Count <= 0 || nodes[0].Nodes.Count <= 0)
                 {
-                    tb_Sql.Text = "--消息：无生成脚本。";
+                    txtSql.Text = "--消息：无生成脚本。";
                     return;
                 }
 
@@ -508,40 +446,53 @@ namespace CompareMSSQL.SubForm
                 Database sourcedb, targetdb;
                 getServer(sourceDB, out sourceServer, out sourcedb);
                 getServer(targetDB, out targetServer, out targetdb);
-                var sql = string.Empty;
-                //差异获取差异sql，却表获取建表sql
-                foreach (CustomTreeNode node in nodes[0].Nodes)
+                List<Table> tables = new List<Table>();
+                StringBuilder sql = new StringBuilder(100);
+
+                if (((CustomTreeNode)nodes[0].Nodes[0]).IsSourceDB)
                 {
-                    switch (node.TableView.Differences)
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
                     {
-                        case DifferencesType.differences:
-                            if (node.TableView.IsSourceDB)
-                            {
-                                sql += getTowTableDiffSql(node.Table, targetdb.Tables[node.Table.Name]);
-                            }
-                            else
-                            {
-                                sql += getTowTableDiffSql(node.Table, sourcedb.Tables[node.Table.Name]);
-                            }
-                            break;
-                        case DifferencesType.lack:
-                            if (node.TableView.IsSourceDB)
-                            {
-                                sql += getTableCreateSql(targetServer, targetdb.Tables[node.Table.Name]);
-                            }
-                            else
-                            {
-                                sql += getTableCreateSql(sourceServer, sourcedb.Tables[node.Table.Name]);
-                            }
-                            break;
+                        switch (node.Differences)
+                        {
+                            case DifferencesType.differences:
+                                sql.Append(getTowTableDiffSql(node.Table, targetdb.Tables[node.Table.Name]));
+                                break;
+                            case DifferencesType.lack:
+                                tables.Add(targetdb.Tables[node.Table.Name]);
+                                break;
+                        }
+                    }
+                    if (tables.Count > 0)
+                    {
+                        sql.Append(getTableCreateSql(targetServer, tables));
+                    }
+                }
+                else
+                {
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
+                    {
+                        switch (node.Differences)
+                        {
+                            case DifferencesType.differences:
+                                sql.Append(getTowTableDiffSql(node.Table, sourcedb.Tables[node.Table.Name]));
+                                break;
+                            case DifferencesType.lack:
+                                tables.Add(sourcedb.Tables[node.Table.Name]);
+                                break;
+                        }
+                    }
+                    if (tables.Count > 0)
+                    {
+                        sql.Append(getTableCreateSql(sourceServer, tables));
                     }
                 }
 
-                tb_Sql.Text = sql == "" ? "--消息：无生成脚本。" : sql;
+                txtSql.Text = sql.Length == 0 ? "--消息：无生成脚本。" : sql.ToString();
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
 
         }
@@ -551,65 +502,82 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_allcreate_Click(object sender, EventArgs e)
+        private void cmsTableAllCreate_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 TreeNodeCollection nodes = null;
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    nodes = source_table_tv.Nodes;
+                    nodes = tvwSource.Nodes;
                 }
                 else
                 {
-                    nodes = target_table_tv.Nodes;
+                    nodes = tvwTarget.Nodes;
                 }
 
                 if (nodes.Count <= 0 || nodes[0].Nodes.Count <= 0)
                 {
-                    tb_Sql.Text = "--消息：无生成脚本。";
+                    txtSql.Text = "--消息：无生成脚本。";
                     return;
                 }
 
                 Server sourceServer, targetServer;
                 Database sourcedb, targetdb;
+                List<Table> sourceTables = new List<Table>();
+                List<Table> targetTables = new List<Table>();
                 getServer(sourceDB, out sourceServer, out sourcedb);
                 getServer(targetDB, out targetServer, out targetdb);
-                var sql = string.Empty;
+                StringBuilder sql = new StringBuilder(100);
+
                 //缺少的表从对方数据库获取建表sql，否则从本身数据库获取sql
-                foreach (CustomTreeNode node in nodes[0].Nodes)
+                if (((CustomTreeNode)nodes[0].Nodes[0]).IsSourceDB)
                 {
-                    switch (node.TableView.Differences)
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
                     {
-                        case DifferencesType.lack:
-                            if (node.TableView.IsSourceDB)
-                            {
-                                sql += getTableCreateSql(targetServer, targetdb.Tables[node.Table.Name]);
-                            }
-                            else
-                            {
-                                sql += getTableCreateSql(sourceServer, sourcedb.Tables[node.Table.Name]);
-                            }
-                            break;
-                        default:
-                            if (node.TableView.IsSourceDB)
-                            {
-                                sql += getTableCreateSql(sourceServer, node.Table);
-                            }
-                            else
-                            {
-                                sql += getTableCreateSql(targetServer, node.Table);
-                            }
-                            break;
+                        switch (node.Differences)
+                        {
+                            case DifferencesType.lack:
+                                targetTables.Add(targetdb.Tables[node.Table.Name]);
+                                break;
+                            default:
+                                sourceTables.Add(node.Table);
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
+                    {
+                        switch (node.Differences)
+                        {
+                            case DifferencesType.lack:
+                                sourceTables.Add(sourcedb.Tables[node.Table.Name]);
+                                break;
+                            default:
+                                targetTables.Add(node.Table);
+                                break;
+                        }
                     }
                 }
 
-                tb_Sql.Text = sql == "" ? "--消息：无生成脚本。" : sql;
+                if (sourceTables.Count > 0)
+                {
+                    sql.Append(getTableCreateSql(sourceServer, sourceTables));
+                }
+                if (targetTables.Count > 0)
+                {
+                    sql.Append(getTableCreateSql(targetServer, targetTables));
+                }
+
+                txtSql.Text = sql.Length == 0 ? "--消息：无生成脚本。" : sql.ToString();
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
         }
 
@@ -618,39 +586,40 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_coloralldiff_Click(object sender, EventArgs e)
+        private void cmsTableColorAllDiff_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 CustomTreeNode selectnode;
                 TreeNodeCollection nodes = null;
 
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    selectnode = (CustomTreeNode)source_table_tv.SelectedNode;
-                    nodes = source_table_tv.Nodes;
+                    selectnode = (CustomTreeNode)tvwSource.SelectedNode;
+                    nodes = tvwSource.Nodes;
                 }
                 else
                 {
-                    selectnode = (CustomTreeNode)target_table_tv.SelectedNode;
-                    nodes = target_table_tv.Nodes;
+                    selectnode = (CustomTreeNode)tvwTarget.SelectedNode;
+                    nodes = tvwTarget.Nodes;
                 }
-                if (!selectnode.IsTable)
+                if (selectnode.Table == null)
                 {
-                    tb_Sql.Text = "--消息：右键表才能生成脚本。";
+                    txtSql.Text = "--消息：右键表才能生成脚本。";
                     return;
                 }
                 //相同或者独有的无差异脚本
-                if (selectnode.TableView.Differences == DifferencesType.common || selectnode.TableView.Differences == DifferencesType.unique)
+                if (selectnode.Differences == DifferencesType.common || selectnode.Differences == DifferencesType.unique)
                 {
-                    tb_Sql.Text = "--消息：无生成脚本。";
+                    txtSql.Text = "--消息：无生成脚本。";
                     return;
                 }
 
                 if (nodes.Count <= 0 || nodes[0].Nodes.Count <= 0)
                 {
-                    tb_Sql.Text = "--消息：无生成脚本。";
+                    txtSql.Text = "--消息：无生成脚本。";
                     return;
                 }
 
@@ -658,43 +627,59 @@ namespace CompareMSSQL.SubForm
                 Database sourcedb, targetdb;
                 getServer(sourceDB, out sourceServer, out sourcedb);
                 getServer(targetDB, out targetServer, out targetdb);
-                var sql = string.Empty;
+                StringBuilder sql = new StringBuilder(100);
+                List<Table> tables = new List<Table>();
                 //差异获取差异sql，却表获取建表sql
-                foreach (CustomTreeNode node in nodes[0].Nodes)
+                if (((CustomTreeNode)nodes[0].Nodes[0]).IsSourceDB)
                 {
-                    if (node.TableView.Differences == selectnode.TableView.Differences)
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
                     {
-                        switch (node.TableView.Differences)
+                        if (node.Differences == selectnode.Differences)
                         {
-                            case DifferencesType.differences:
-                                if (node.TableView.IsSourceDB)
-                                {
-                                    sql += getTowTableDiffSql(node.Table, targetdb.Tables[node.Table.Name]);
-                                }
-                                else
-                                {
-                                    sql += getTowTableDiffSql(node.Table, sourcedb.Tables[node.Table.Name]);
-                                }
-                                break;
-                            case DifferencesType.lack:
-                                if (node.TableView.IsSourceDB)
-                                {
-                                    sql += getTableCreateSql(targetServer, targetdb.Tables[node.Table.Name]);
-                                }
-                                else
-                                {
-                                    sql += getTableCreateSql(sourceServer, sourcedb.Tables[node.Table.Name]);
-                                }
-                                break;
+                            switch (node.Differences)
+                            {
+                                case DifferencesType.differences:
+                                    sql.Append(getTowTableDiffSql(node.Table, targetdb.Tables[node.Table.Name]));
+                                    break;
+                                case DifferencesType.lack:
+                                    tables.Add(targetdb.Tables[node.Table.Name]);
+                                    break;
+                            }
                         }
+                    }
+                    if (tables.Count > 0)
+                    {
+                        sql.Append(getTableCreateSql(targetServer, tables));
+                    }
+                }
+                else
+                {
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
+                    {
+                        if (node.Differences == selectnode.Differences)
+                        {
+                            switch (node.Differences)
+                            {
+                                case DifferencesType.differences:
+                                    sql.Append(getTowTableDiffSql(node.Table, sourcedb.Tables[node.Table.Name]));
+                                    break;
+                                case DifferencesType.lack:
+                                    tables.Add(sourcedb.Tables[node.Table.Name]);
+                                    break;
+                            }
+                        }
+                    }
+                    if (tables.Count > 0)
+                    {
+                        sql.Append(getTableCreateSql(sourceServer, tables));
                     }
                 }
 
-                tb_Sql.Text = sql == "" ? "--消息：无生成脚本。" : sql;
+                txtSql.Text = sql.Length == 0 ? "--消息：无生成脚本。" : sql.ToString();
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
         }
 
@@ -703,72 +688,91 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_colorallcreate_Click(object sender, EventArgs e)
+        private void cmsTableColorAllCreate_Click(object sender, EventArgs e)
         {
             try
             {
+                showMessage("正在执行...");
                 CustomTreeNode selectnode;
                 TreeNodeCollection nodes = null;
 
                 //根据右键的树，获取树的节点
                 if (currentIsSource)
                 {
-                    selectnode = (CustomTreeNode)source_table_tv.SelectedNode;
-                    nodes = source_table_tv.Nodes;
+                    selectnode = (CustomTreeNode)tvwSource.SelectedNode;
+                    nodes = tvwSource.Nodes;
                 }
                 else
                 {
-                    selectnode = (CustomTreeNode)target_table_tv.SelectedNode;
-                    nodes = target_table_tv.Nodes;
+                    selectnode = (CustomTreeNode)tvwTarget.SelectedNode;
+                    nodes = tvwTarget.Nodes;
                 }
-                if (!selectnode.IsTable)
+                if (selectnode.Table == null)
                 {
-                    tb_Sql.Text = "--消息：右键表才能生成脚本。";
+                    txtSql.Text = "--消息：右键表才能生成脚本。";
                     return;
                 }
 
                 Server sourceServer, targetServer;
                 Database sourcedb, targetdb;
+                List<Table> sourceTables = new List<Table>();
+                List<Table> targetTables = new List<Table>();
                 getServer(sourceDB, out sourceServer, out sourcedb);
                 getServer(targetDB, out targetServer, out targetdb);
-                var sql = string.Empty;
+                StringBuilder sql = new StringBuilder(100);
                 //缺少的表从对方数据库获取建表sql，否则从本身数据库获取sql
-                foreach (CustomTreeNode node in nodes[0].Nodes)
+                if (((CustomTreeNode)nodes[0].Nodes[0]).IsSourceDB)
                 {
-                    if (node.TableView.Differences == selectnode.TableView.Differences)
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
                     {
-                        switch (node.TableView.Differences)
+                        if (node.Differences == selectnode.Differences)
                         {
-                            case DifferencesType.lack:
-                                if (node.TableView.IsSourceDB)
-                                {
-                                    sql += getTableCreateSql(targetServer, targetdb.Tables[node.Table.Name]);
-                                }
-                                else
-                                {
-                                    sql += getTableCreateSql(sourceServer, sourcedb.Tables[node.Table.Name]);
-                                }
-                                break;
-                            default:
-                                if (node.TableView.IsSourceDB)
-                                {
-                                    sql += getTableCreateSql(sourceServer, node.Table);
-                                }
-                                else
-                                {
-                                    sql += getTableCreateSql(targetServer, node.Table);
-                                }
-                                break;
+                            switch (node.Differences)
+                            {
+                                case DifferencesType.lack:
+                                    targetTables.Add(targetdb.Tables[node.Table.Name]);
+                                    break;
+                                default:
+                                    sourceTables.Add(node.Table);
+                                    break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (CustomTreeNode node in nodes[0].Nodes)
+                    {
+                        if (node.Differences == selectnode.Differences)
+                        {
+                            switch (node.Differences)
+                            {
+                                case DifferencesType.lack:
+                                    sourceTables.Add(sourcedb.Tables[node.Table.Name]);
+                                    break;
+                                default:
+                                    targetTables.Add(node.Table);
+                                    break;
+                            }
                         }
                     }
                 }
 
-                tb_Sql.Text = sql == "" ? "--消息：无生成脚本。" : sql;
+                if (sourceTables.Count > 0)
+                {
+                    sql.Append(getTableCreateSql(sourceServer, sourceTables));
+                }
+                if (targetTables.Count > 0)
+                {
+                    sql.Append(getTableCreateSql(targetServer, targetTables));
+                }
+
+                txtSql.Text = sql.Length == 0 ? "--消息：无生成脚本。" : sql.ToString();
 
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
 
         }
@@ -778,7 +782,7 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void cms_table_hidden_Click(object sender, EventArgs e)
+        private void cmsTableHidden_Click(object sender, EventArgs e)
         {
             try
             {
@@ -786,7 +790,7 @@ namespace CompareMSSQL.SubForm
             }
             catch(Exception ex)
             {
-                tb_Sql.Text = string.Format("--消息：{0}", ex.Message);
+                txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
         }
 
@@ -798,24 +802,24 @@ namespace CompareMSSQL.SubForm
         /// <returns></returns>
         private string getTowTableDiffSql(Table source, Table target)
         {
-            string diff = string.Empty;
-            diff += string.Format("--script for table {0}\r\n", source.Name);
+            StringBuilder diff = new StringBuilder(100);
+            diff.AppendFormat("--script for table {0}\r\n", source.Name);
             foreach (Column col in target.Columns)
             {
                 if (source.Columns.Contains(col.Name))
                 {
                     if (!IsEqualTowCol(source.Columns[col.Name], col))
                     {
-                        diff += string.Format("alter table {0}\r\nalter column {1} {2} {3} \r\n", source.Name, col.Name, col.DataType.IsStringType ? string.Format("{0}({1})", col.DataType.Name, col.DataType.MaximumLength == -1 ? "MAX" : col.DataType.MaximumLength.ToString()) : col.DataType.Name, col.Nullable ? "null" : "not null");
+                        diff.AppendFormat("alter table {0}\r\nalter column {1} {2} {3} \r\n", source.Name, col.Name, col.DataType.IsStringType ? string.Format("{0}({1})", col.DataType.Name, col.DataType.MaximumLength == -1 ? "MAX" : col.DataType.MaximumLength.ToString()) : col.DataType.Name, col.Nullable ? "null" : "not null");
                     }
                 }
                 else
                 {
-                    diff += string.Format("alter table {0}\r\nadd {1} {2} {3} \r\n", source.Name, col.Name, col.DataType.IsStringType ? string.Format("{0}({1})", col.DataType.Name, col.DataType.MaximumLength == -1 ? "MAX" : col.DataType.MaximumLength.ToString()) : col.DataType.Name, col.Nullable ? "null" : "not null");
+                    diff.AppendFormat("alter table {0}\r\nadd {1} {2} {3} \r\n", source.Name, col.Name, col.DataType.IsStringType ? string.Format("{0}({1})", col.DataType.Name, col.DataType.MaximumLength == -1 ? "MAX" : col.DataType.MaximumLength.ToString()) : col.DataType.Name, col.Nullable ? "null" : "not null");
                 }
             }
-            diff += "--\r\n";
-            return diff;
+            diff.Append("--\r\n");
+            return diff.ToString();
         }
 
         private Table getTableByName(string connect, string name)
@@ -838,20 +842,50 @@ namespace CompareMSSQL.SubForm
         {
             Scripter scrp = new Scripter(srv);
             scrp.Options.ScriptDrops = false;
+            //不显示依赖
+            scrp.Options.WithDependencies = false;
+            scrp.Options.Indexes = true;
+            scrp.Options.DriAllConstraints = true;
+            scrp.Options.IncludeHeaders = true;
+            scrp.Options.IncludeIfNotExists = true;
+            StringBuilder sql = new StringBuilder();
+
+            System.Collections.Specialized.StringCollection sc = scrp.Script(new Urn[] { table.Urn });
+            //sql.AppendFormat("--script for table {0}\r\n", table.Name);
+            foreach (string st in sc)
+            {
+                sql.AppendFormat("{0}\r\n", st);
+            }
+            //sql.Append("--\r\n");
+
+            return sql.ToString();
+        }
+
+        private string getTableCreateSql(Server srv, List<Table> tables)
+        {
+            Scripter scrp = new Scripter(srv);
+            scrp.Options.ScriptDrops = false;
             scrp.Options.WithDependencies = true;
             scrp.Options.Indexes = true;
             scrp.Options.DriAllConstraints = true;
-            var sql = string.Empty;
+            scrp.Options.IncludeHeaders = true;
+            scrp.Options.IncludeIfNotExists = true;
+            StringBuilder sql = new StringBuilder();
+            UrnCollection urnCollection = new UrnCollection();
 
-            System.Collections.Specialized.StringCollection sc = scrp.Script(new Urn[] { table.Urn });
-            sql += string.Format("--script for table {0}\r\n", table.Name);
+            foreach (Table tb in tables)
+            {
+                urnCollection.Add(tb.Urn);
+            }
+
+            System.Collections.Specialized.StringCollection sc = scrp.Script(urnCollection);
             foreach (string st in sc)
             {
-                sql += string.Format("{0}\r\n", st);
+                sql.AppendFormat("{0}\r\n", st);
             }
-            sql += "--\r\n";
+            //sql.Append("--\r\n");
 
-            return sql;
+            return sql.ToString();
         }
 
         private string getTableCreateSql(string connect, string name)
@@ -862,7 +896,7 @@ namespace CompareMSSQL.SubForm
             var dbName = sourceConn.Database;
             // Reference the database.
             Database db = srv.Databases[dbName];
-            var sql = string.Empty;
+            StringBuilder sql = new StringBuilder();
 
             // Define a Scripter object and set the required scripting options.   
             Scripter scrp = new Scripter(srv);
@@ -870,40 +904,23 @@ namespace CompareMSSQL.SubForm
             scrp.Options.WithDependencies = true;
             scrp.Options.Indexes = true;   // To include indexes  
             scrp.Options.DriAllConstraints = true;   // to include referential constraints in the script  
+            scrp.Options.IncludeHeaders = true;
+            scrp.Options.IncludeIfNotExists = true;
 
             // Iterate through the tables in database and script each one. Display the script.
 
             if (db.Tables.Contains(name))
             {
-                System.Collections.Specialized.StringCollection sc = scrp.Script(new Urn[] { db.Tables[name].Urn });
-                sql += string.Format("--script for table {0}\r\n", name);
+                System.Collections.Specialized.StringCollection sc = scrp.Script(new Urn[] { db.Tables[name].Urn});
+                //sql.AppendFormat("--script for table {0}\r\n", name);
                 foreach (string st in sc)
                 {
-                    sql += string.Format("{0}\r\n", st);
+                    sql.AppendFormat("{0}\r\n", st);
                 }
-                sql += "--\r\n";
+                //sql.Append("--\r\n");
             }
             sourceConn.Dispose();
-            return sql;               
-        }
-
-        /// <summary>
-        /// server、db
-        /// </summary>
-        /// <param name="connect"></param>
-        /// <param name="srv"></param>
-        /// <param name="db"></param>
-        /// <returns></returns>
-        private bool getServer(string connect, out Server srv, out Database db)
-        {
-            var sourceConn = new SqlConnection(connect);
-            srv = new Server(new ServerConnection(sourceConn));
-
-            var dbName = sourceConn.Database;
-
-            db = srv.Databases[dbName];
-            sourceConn.Dispose();
-            return true;
+            return sql.ToString();               
         }
 
     }
