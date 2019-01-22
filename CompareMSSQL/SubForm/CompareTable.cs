@@ -30,10 +30,10 @@ namespace CompareMSSQL.SubForm
         /// </summary>
         private bool currentIsSource;
 
-        //public CompareTable()
-        //{
-        //    InitializeComponent();
-        //}
+        public CompareTable()
+        {
+            InitializeComponent();
+        }
 
         public CompareTable(string sourceDB, string targetDB):base()
         {
@@ -50,7 +50,6 @@ namespace CompareMSSQL.SubForm
         {
             try
             {
-                Console.WriteLine(string.Format("1:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
                 var sourceDatabase = getDB(sourceDB) ?? new Database();
                 var targetDatabase = getDB(targetDB) ?? new Database();
 
@@ -97,19 +96,17 @@ namespace CompareMSSQL.SubForm
             {
                 txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
-            Console.WriteLine(string.Format("2:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
         }
 
         private void setTreeView(TreeView tv, bool isSource)
         {
             try
             {
-                Console.WriteLine(string.Format("3:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
                 var tables = allTables.Where(tb => tb.IsSourceDB == isSource).OrderBy(tb => tb.DBTable.Name);
                 CustomTreeNode startNode = new CustomTreeNode();
                 startNode.IsParent = true;
                 startNode.CanMenu = true;
-                startNode.Text = "所有表([黑:同][绿:独有][黄:差异][灰:缺])";
+                startNode.Text = "所有表";
                 tv.Nodes.Add(startNode);
 
                 var tempNode = new CustomTreeNode();
@@ -160,7 +157,6 @@ namespace CompareMSSQL.SubForm
             {
                 txtSql.Text = string.Format("--消息：{0}", ex.Message);
             }
-            Console.WriteLine(string.Format("4:{0}", DateTime.Now.ToString("hh:mm:ss ffff")));
         }
 
         private List<Table> getDBTable(string dbStr, bool includeSys)

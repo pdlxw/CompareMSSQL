@@ -55,10 +55,11 @@ C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\bin\Debug\Microsoft.Sql
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\bin\Debug\Microsoft.SqlServer.SqlWmiManagement.xml
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\bin\Debug\Microsoft.SqlServer.Types.xml
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\bin\Debug\Microsoft.SqlServer.WmiEnum.xml
-C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.csprojResolveAssemblyReference.cache
-C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.Form1.resources
+C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.CompareMain.resources
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.Properties.Resources.resources
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.SubForm.CommonWin.resources
+C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.SubForm.CompareFunction.resources
+C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.SubForm.CompareProcedure.resources
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.SubForm.CompareTable.resources
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.SubForm.CompareView.resources
 C:\Users\funza\Workspace\Magic\CompareMSSQL\CompareMSSQL\obj\Debug\CompareMSSQL.csproj.GenerateResource.Cache

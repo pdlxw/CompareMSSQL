@@ -32,6 +32,10 @@ namespace CompareMSSQL.Entity
 
         public View View { get; set; }
 
+        public StoredProcedure Procedure { get; set; }
+
+        public UserDefinedFunction Function { get; set; }
+
         public Column Column { get; set; }
 
         public DataType DataType { get; set; }

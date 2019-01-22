@@ -95,6 +95,7 @@ namespace CompareMSSQL.SubForm
             catch (Exception ex)
             {
                 txtSql.Text = string.Format("--消息：{0}", ex.Message);
+                throw ex;
             }
         }
 
@@ -107,12 +108,13 @@ namespace CompareMSSQL.SubForm
                 CustomTreeNode startNode = new CustomTreeNode();
                 startNode.IsParent = true;
                 startNode.CanMenu = false;
-                startNode.Text = "所有视图([黑:同][绿:独有][黄:差异][灰:缺])";
+                startNode.Text = "所有视图";
 
                 tv.Nodes.Add(startNode);
 
                 var tempNode = new CustomTreeNode();
                 var color = Color.Black;
+                var tip = "";
                 foreach (var view in views)
                 {
                     switch (view.Differences)
@@ -148,6 +150,7 @@ namespace CompareMSSQL.SubForm
             catch (Exception ex)
             {
                 txtSql.Text = string.Format("--消息：{0}", ex.Message);
+                throw ex;
             }
         }
 
@@ -679,7 +682,7 @@ namespace CompareMSSQL.SubForm
             sql += string.Format("--script for view {0}\r\n", name);
             if (db.Views.Contains(name))
             {
-                sql += "ALTER VIEW [dbo].[InstrumentView] \r\nAS\r\n" + db.Views[name].TextBody + "\r\n";
+                sql += "ALTER VIEW [dbo].[" + Name + "] \r\nAS\r\n" + db.Views[name].TextBody + "\r\n";
             }
             sql += "--\r\n";
             sourceConn.Dispose();
@@ -690,7 +693,7 @@ namespace CompareMSSQL.SubForm
         {
             string sql = "";
             sql += string.Format("--script for view {0}\r\n", view.Name);
-            sql += "ALTER VIEW [dbo].[InstrumentView] \r\nAS\r\n" + view.TextBody + "\r\n" + "--\r\n";
+            sql += "ALTER VIEW [dbo].[" + view.Name + "] \r\nAS\r\n" + view.TextBody + "\r\n" + "--\r\n";
             return sql.ToString();
         }
 

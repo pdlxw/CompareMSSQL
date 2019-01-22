@@ -48,7 +48,7 @@
             this.grpSource.Size = new System.Drawing.Size(310, 350);
             this.grpSource.TabIndex = 0;
             this.grpSource.TabStop = false;
-            this.grpSource.Text = "源数据库";
+            this.grpSource.Text = "源数据库([黑:同][绿:独有][黄:差异][灰:缺])";
             // 
             // tvwSource
             // 
@@ -72,7 +72,7 @@
             this.grpTarget.Size = new System.Drawing.Size(310, 350);
             this.grpTarget.TabIndex = 1;
             this.grpTarget.TabStop = false;
-            this.grpTarget.Text = "目标数据库";
+            this.grpTarget.Text = "目标数据库([黑:同][绿:独有][黄:差异][灰:缺])";
             // 
             // grpSql
             // 
