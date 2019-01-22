@@ -47,10 +47,12 @@
             // tvwSource
             // 
             this.tvwSource.LineColor = System.Drawing.Color.Black;
+            this.tvwSource.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.tvwSource_NodeMouseClick);
             // 
             // tvwTarget
             // 
             this.tvwTarget.LineColor = System.Drawing.Color.Black;
+            this.tvwTarget.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.tvwTarget_NodeMouseClick);
             // 
             // cmsTable
             // 
@@ -64,7 +66,7 @@
             this.cmsTableColorAllDiff,
             this.cmsTableColorAllCreate});
             this.cmsTable.Name = "cms_top";
-            this.cmsTable.Size = new System.Drawing.Size(197, 170);
+            this.cmsTable.Size = new System.Drawing.Size(197, 148);
             // 
             // cmsTableCurrentDiff
             // 
@@ -117,27 +119,20 @@
             this.cmsTableColorAllCreate.Size = new System.Drawing.Size(196, 22);
             this.cmsTableColorAllCreate.Text = "当前颜色全部创建脚本";
             this.cmsTableColorAllCreate.Click += new System.EventHandler(this.cmsTableColorAllCreate_Click);
-
-            //
-            //base handler
-            //
-            this.tvwTarget.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.tvwTarget_NodeMouseClick);
-            this.tvwSource.NodeMouseClick += new System.Windows.Forms.TreeNodeMouseClickEventHandler(this.tvwSource_NodeMouseClick);
             // 
             // CompareTable
             // 
-            //this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
-            //this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            //this.ClientSize = new System.Drawing.Size(632, 557);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.ClientSize = new System.Drawing.Size(632, 557);
             this.Name = "CompareTable";
             this.Text = "CompareTable";
-            //this.Controls.SetChildIndex(this.grpSource, 0);
-            //this.Controls.SetChildIndex(this.grpTarget, 0);
-            //this.Controls.SetChildIndex(this.grpSql, 0);
-            //this.grpSource.ResumeLayout(false);
-            //this.grpTarget.ResumeLayout(false);
-            //this.grpSql.ResumeLayout(false);
-            //this.grpSql.PerformLayout();
+            this.Controls.SetChildIndex(this.grpSource, 0);
+            this.Controls.SetChildIndex(this.grpTarget, 0);
+            this.Controls.SetChildIndex(this.grpSql, 0);
+            this.grpSource.ResumeLayout(false);
+            this.grpTarget.ResumeLayout(false);
+            this.grpSql.ResumeLayout(false);
+            this.grpSql.PerformLayout();
             this.cmsTable.ResumeLayout(false);
             this.ResumeLayout(false);
 

@@ -18,6 +18,8 @@ namespace CompareMSSQL
     {
         private bool canSelectMenu = true;
 
+        private bool wait = false;
+
         public CompareMain()
         {
             
@@ -31,6 +33,7 @@ namespace CompareMSSQL
         {
             string[] menuText = { "表", "视图", "存储过程", "函数" };
             this.tvwMenu.ImageList = imgMenuTree;
+            this.tvwMenu.ShowNodeToolTips = true;
             foreach (var menu in menuText)
             {
                 CustomTreeNode node = new CustomTreeNode();
@@ -50,68 +53,111 @@ namespace CompareMSSQL
 
         private void Menu_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            lblMsg.Visible = true;
-            lblMsg.Refresh();
-            tvwMenu.SelectedNode = e.Node;
-
-            //var maskLayer = new MaskLayerForm(new Size(this.ClientRectangle.Width, this.ClientRectangle.Height), new Point(this.Left, this.Top + this.Height - this.ClientRectangle.Height), "正在加载...");
-            //maskLayer.ShowDialog(this);
-
-            tvwMenu.Enabled = false;
-            tvwMenu.Cursor = Cursors.WaitCursor;
-            switch (e.Node.Text)
+            try
             {
-                case "表":
-
-                    splMenu.Panel2.Controls.Clear();
-                    var compareTable = new CompareTable(txtSourceDB.Text, txtTargetDB.Text);
-                    
-                    compareTable.Dock = DockStyle.Fill;
-                    compareTable.TopLevel = false;
-                    compareTable.WindowState = FormWindowState.Maximized;
-                    compareTable.FormBorderStyle = FormBorderStyle.None;
-                    compareTable.Parent = splMenu.Panel2;                    
-                    compareTable.Show();
-                    break;
-                case "视图":
-                    splMenu.Panel2.Controls.Clear();
-                    var compareView = new CompareView(txtSourceDB.Text, txtTargetDB.Text);
-                    compareView.Dock = DockStyle.Fill;
-                    compareView.TopLevel = false;
-                    compareView.WindowState = FormWindowState.Maximized;
-                    compareView.FormBorderStyle = FormBorderStyle.None;
-                    compareView.Parent = splMenu.Panel2;
-                    compareView.Show();
-                    break;
-                case "存储过程":
-                    splMenu.Panel2.Controls.Clear();
-                    var compareProcedure = new CompareProcedure(txtSourceDB.Text, txtTargetDB.Text);
-                    compareProcedure.Dock = DockStyle.Fill;
-                    compareProcedure.TopLevel = false;
-                    compareProcedure.WindowState = FormWindowState.Maximized;
-                    compareProcedure.FormBorderStyle = FormBorderStyle.None;
-                    compareProcedure.Parent = splMenu.Panel2;
-                    compareProcedure.Show();
-                    break;
-                case "函数":
-                    splMenu.Panel2.Controls.Clear();
-                    var compareFunction = new CompareFunction(txtSourceDB.Text, txtTargetDB.Text);
-                    compareFunction.Dock = DockStyle.Fill;
-                    compareFunction.TopLevel = false;
-                    compareFunction.WindowState = FormWindowState.Maximized;
-                    compareFunction.FormBorderStyle = FormBorderStyle.None;
-                    compareFunction.Parent = splMenu.Panel2;
-                    compareFunction.Show();
-                    break;
-                default: break;
+                
+                lblMsg.Visible = true;
+                lblMsg.Refresh();
+                if (tvwMenu.SelectedNode != null)
+                {
+                    tvwMenu.SelectedNode.ToolTipText = tvwMenu.SelectedNode.Text;
+                }
+                tvwMenu.SelectedNode = e.Node;
+                tvwMenu.SelectedNode.ToolTipText = "点击刷新";
+                //var maskLayer = new MaskLayerForm(new Size(this.ClientRectangle.Width, this.ClientRectangle.Height), new Point(this.Left, this.Top + this.Height - this.ClientRectangle.Height), "正在加载...");
+                //maskLayer.ShowDialog(this);
+                
+                tvwMenu.Enabled = false;
+                tvwMenu.Cursor = Cursors.WaitCursor;
+                var label = new Label();
+                label.Text = "正在加载...";
+                label.Location = new Point(10, 10);
+                splMenu.Panel2.Controls.Clear();   
+                splMenu.Panel2.Controls.Add(label);
+                splMenu.Panel2.Refresh();
+                switch (e.Node.Text)
+                {
+                    case "表":    
+                        var compareTable = new CompareTable(txtSourceDB.Text, txtTargetDB.Text);
+                        splMenu.Panel2.Controls.Remove(label);
+                        showSubForm(compareTable);
+                        //compareTable.Dock = DockStyle.Fill;
+                        //compareTable.TopLevel = false;
+                        //compareTable.WindowState = FormWindowState.Maximized;
+                        //compareTable.FormBorderStyle = FormBorderStyle.None;
+                        //compareTable.Parent = splMenu.Panel2;
+                        //compareTable.Show();
+                        break;
+                    case "视图":
+                        //splMenu.Panel2.Controls.Clear();
+                        var compareView = new CompareView(txtSourceDB.Text, txtTargetDB.Text);
+                        splMenu.Panel2.Controls.Remove(label);
+                        showSubForm(compareView);
+                        //compareView.Dock = DockStyle.Fill;
+                        //compareView.TopLevel = false;
+                        //compareView.WindowState = FormWindowState.Maximized;
+                        //compareView.FormBorderStyle = FormBorderStyle.None;
+                        //compareView.Parent = splMenu.Panel2;
+                        //compareView.Show();
+                        break;
+                    case "存储过程":
+                        //splMenu.Panel2.Controls.Clear();
+                        var compareProcedure = new CompareProcedure(txtSourceDB.Text, txtTargetDB.Text);
+                        splMenu.Panel2.Controls.Remove(label);
+                        showSubForm(compareProcedure);
+                        //compareProcedure.Dock = DockStyle.Fill;
+                        //compareProcedure.TopLevel = false;
+                        //compareProcedure.WindowState = FormWindowState.Maximized;
+                        //compareProcedure.FormBorderStyle = FormBorderStyle.None;
+                        //compareProcedure.Parent = splMenu.Panel2;
+                        //compareProcedure.Show();
+                        break;
+                    case "函数":
+                        //splMenu.Panel2.Controls.Clear();
+                        var compareFunction = new CompareFunction(txtSourceDB.Text, txtTargetDB.Text);
+                        splMenu.Panel2.Controls.Remove(label);
+                        showSubForm(compareFunction);
+                        //compareFunction.Dock = DockStyle.Fill;
+                        //compareFunction.TopLevel = false;
+                        //compareFunction.WindowState = FormWindowState.Maximized;
+                        //compareFunction.FormBorderStyle = FormBorderStyle.None;
+                        //compareFunction.Parent = splMenu.Panel2;
+                        //compareFunction.Show();
+                        break;
+                    default: break;
+                }
             }
-            lblMsg.Visible = false;
-            lblMsg.Refresh();
-            tvwMenu.Enabled = true;
-            tvwMenu.Cursor = Cursors.Default;
+            catch
+            {
+
+            }
+            finally
+            {
+                lblMsg.Visible = false;
+                lblMsg.Refresh();
+                tvwMenu.Enabled = true;
+                tvwMenu.Cursor = Cursors.Hand;
+                //wait = false;
+            }
         }
 
+        private void showSubForm(CommonWin win)
+        {
+            win.Dock = DockStyle.Fill;
+            win.TopLevel = false;
+            win.WindowState = FormWindowState.Maximized;
+            win.FormBorderStyle = FormBorderStyle.None;
+            win.Top = 0;
+            win.Left = 0;
+            win.Parent = splMenu.Panel2;
+            win.Show();
+        }
 
+        /// <summary>
+        /// 非焦点也保持选中背景
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void tvwMenu_DrawNode(object sender, DrawTreeNodeEventArgs e)
         {
 

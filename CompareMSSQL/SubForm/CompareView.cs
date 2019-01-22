@@ -95,7 +95,6 @@ namespace CompareMSSQL.SubForm
             catch (Exception ex)
             {
                 txtSql.Text = string.Format("--消息：{0}", ex.Message);
-                throw ex;
             }
         }
 
